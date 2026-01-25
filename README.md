@@ -28,12 +28,12 @@ cd techtalks-pharmacy-shortage
 pip install -r requirements.txt
 
 
-Setup
+## Setup
 # Using Docker (recommended)
 docker-compose up
 
 
-Folder Structure
+## Folder Structure
 techtalks-pharmacy-shortage/
 │
 ├── app/
