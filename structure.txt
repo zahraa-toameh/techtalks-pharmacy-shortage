@@ -1,0 +1,67 @@
+techtalks-pharmacy-shortage/
+│
+├── app/
+│   ├── api/                  # FastAPI endpoints
+│   │   ├── __init__.py
+│   │   ├── routes.py          # main API routes
+│   │   ├── predictions.py     # endpoints for ML predictions
+│   │   ├── auth.py            # authentication endpoints (if needed)
+│   │   └── health_check.py    # simple API status check
+│   │
+│   ├── services/             # Business logic layer
+│   │   ├── __init__.py
+│   │   ├── shortage_service.py      # predicts shortages
+│   │   ├── inventory_service.py     # inventory management logic
+│   │   └── notification_service.py # alerts for upcoming shortages
+│   │
+│   ├── models/               # Database & ML models
+│   │   ├── __init__.py
+│   │   ├── db_models.py       # SQLAlchemy ORM models
+│   │   ├── ml_models.py       # ML model definitions (XGBoost, etc.)
+│   │   └── schemas.py         # Pydantic models for requests/responses
+│   │
+│   ├── database/             # DB connection and setup
+│   │   ├── __init__.py
+│   │   ├── connection.py      # DB connection config
+│   │   ├── session.py         # sessionmaker setup
+│   │   └── utils.py           # DB helper functions
+│   │
+│   ├── ml/                   # Machine Learning scripts
+│   │   ├── __init__.py
+│   │   ├── preprocess.py      # data cleaning & feature engineering
+│   │   ├── train_model.py     # train ML models
+│   │   ├── predict.py         # make predictions
+│   │   └── evaluate.py        # evaluate model performance
+│   │
+│   └── utils/                # Helper functions & configs
+│       ├── __init__.py
+│       ├── logger.py          # logging setup
+│       ├── config.py          # global configuration variables
+│       └── helpers.py         # miscellaneous helper functions
+│
+├── tests/                     # Unit & integration tests
+│   ├── __init__.py
+│   ├── test_api.py
+│   ├── test_services.py
+│   ├── test_models.py
+│   └── test_ml.py
+│
+├── notebooks/                 # Jupyter notebooks for analysis & prototyping
+│   ├── data_exploration.ipynb
+│   ├── model_training.ipynb
+│   └── model_evaluation.ipynb
+│
+├── docker/                    # Docker configuration
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── .dockerignore
+│
+├── docs/                      # Documentation files
+│   ├── architecture.md        # system architecture diagram
+│   ├── api_documentation.md   # API endpoint docs
+│   ├── ml_pipeline.md         # ML workflow explanation
+│   └── user_manual.md         # instructions for dashboard/API
+│
+├── requirements.txt           # Python dependencies
+├── README.md                  # Project overview
+└── .gitignore                 # Git ignore rules
