@@ -40,6 +40,22 @@ class ShortageService:
         self.critical_threshold = critical_threshold
         self.low_threshold = low_threshold
 
+    def calculate_daily_coverage(
+        self,
+        quantity: int,
+        avg_daily_usage: float,
+    ) -> float:
+        """
+        Calculate how many days the current stock will last.
+
+        This is a baseline helper for demand-based shortage detection.
+        It will be used later when sales/demand data is available.
+        """
+        if avg_daily_usage <= 0:
+            return float("inf")
+
+        return quantity / avg_daily_usage
+
     def compute_risk(
         self,
         inventory: "Inventory",
@@ -106,7 +122,7 @@ class ShortageService:
         Return inventory items whose computed risk_score >= min_risk.
         """
         # Local import to avoid import-time issues before models exist
-        from app.models.db_models import Inventory  
+        from app.models.db_models import Inventory
 
         inventory_rows = self.db.query(Inventory).all()
         results = [self.compute_risk(inv) for inv in inventory_rows]
