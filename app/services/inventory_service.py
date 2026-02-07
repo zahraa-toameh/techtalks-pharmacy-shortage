@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.db_models import Inventory, StockHistory
@@ -68,16 +69,15 @@ class InventoryService:
         medication_id: int,
         previous: int,
         new: int,
-        action: str,
+        reason: str,
     ) -> None:
         history = StockHistory(
             pharmacy_id=pharmacy_id,
             medication_id=medication_id,
-            previous_quantity=previous,
+            old_quantity=previous,
             new_quantity=new,
-            change_amount=new - previous,
-            action=action,
-            created_at=datetime.utcnow(),
+            changed_at=datetime.utcnow(),
+            reason=reason,
         )
         self.db.add(history)
 
@@ -94,30 +94,37 @@ class InventoryService:
         inventory = self._get_inventory(pharmacy_id, medication_id)
         now = datetime.utcnow()
 
-        if inventory is None:
-            previous = 0
-            inventory = Inventory(
-                pharmacy_id=pharmacy_id,
-                medication_id=medication_id,
-                quantity=quantity,
+        try:
+            if inventory is None:
+                previous = 0
+                inventory = Inventory(
+                    pharmacy_id=pharmacy_id,
+                    medication_id=medication_id,
+                    quantity=quantity,
+                )
+                self.db.add(inventory)
+                new = quantity
+            else:
+                previous = inventory.quantity
+                inventory.quantity += quantity
+                new = inventory.quantity
+
+            self._log_history(
+                pharmacy_id,
+                medication_id,
+                previous,
+                new,
+                reason="ADD",
             )
-            self.db.add(inventory)
-            new = quantity
-        else:
-            previous = inventory.quantity
-            inventory.quantity += quantity
-            new = inventory.quantity
 
-        self._log_history(
-            pharmacy_id,
-            medication_id,
-            previous,
-            new,
-            action="ADD",
-        )
+            self.db.commit()
+            self.db.refresh(inventory)
 
-        self.db.commit()
-        self.db.refresh(inventory)
+        except SQLAlchemyError as exc:
+            self.db.rollback()
+            raise InventoryServiceError(
+                "Failed to add stock"
+            ) from exc
 
         return InventoryChangeResult(
             pharmacy_id,
@@ -139,28 +146,35 @@ class InventoryService:
         inventory = self._get_inventory(pharmacy_id, medication_id)
         now = datetime.utcnow()
 
-        if inventory is None:
-            previous = 0
-            inventory = Inventory(
-                pharmacy_id=pharmacy_id,
-                medication_id=medication_id,
-                quantity=new_quantity,
+        try:
+            if inventory is None:
+                previous = 0
+                inventory = Inventory(
+                    pharmacy_id=pharmacy_id,
+                    medication_id=medication_id,
+                    quantity=new_quantity,
+                )
+                self.db.add(inventory)
+            else:
+                previous = inventory.quantity
+                inventory.quantity = new_quantity
+
+            self._log_history(
+                pharmacy_id,
+                medication_id,
+                previous,
+                new_quantity,
+                reason="UPDATE",
             )
-            self.db.add(inventory)
-        else:
-            previous = inventory.quantity
-            inventory.quantity = new_quantity
 
-        self._log_history(
-            pharmacy_id,
-            medication_id,
-            previous,
-            new_quantity,
-            action="UPDATE",
-        )
+            self.db.commit()
+            self.db.refresh(inventory)
 
-        self.db.commit()
-        self.db.refresh(inventory)
+        except SQLAlchemyError as exc:
+            self.db.rollback()
+            raise InventoryServiceError(
+                "Failed to update stock"
+            ) from exc
 
         return InventoryChangeResult(
             pharmacy_id,
@@ -191,18 +205,25 @@ class InventoryService:
                 "Cannot remove more stock than available"
             )
 
-        inventory.quantity = new
+        try:
+            inventory.quantity = new
 
-        self._log_history(
-            pharmacy_id,
-            medication_id,
-            previous,
-            new,
-            action="REMOVE",
-        )
+            self._log_history(
+                pharmacy_id,
+                medication_id,
+                previous,
+                new,
+                reason="REMOVE",
+            )
 
-        self.db.commit()
-        self.db.refresh(inventory)
+            self.db.commit()
+            self.db.refresh(inventory)
+
+        except SQLAlchemyError as exc:
+            self.db.rollback()
+            raise InventoryServiceError(
+                "Failed to remove stock"
+            ) from exc
 
         return InventoryChangeResult(
             pharmacy_id,
