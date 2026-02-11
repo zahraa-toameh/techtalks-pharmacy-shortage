@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 load_dotenv()
 
@@ -22,3 +23,6 @@ def create_db_engine() -> Engine:
 
 
 engine = create_db_engine()
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()

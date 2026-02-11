@@ -7,6 +7,15 @@ from app.api import health_check, routes
 from app.database.connection import engine
 from app.models.db_models import Base
 
+from fastapi import HTTPException
+from app.api.schemas import ShortageRequest  # import schema
+
+from pydantic import BaseModel
+from app.ml.predict import predict_shortage
+from xml.parsers.expat import model
+from app.ml.train_model import train_model
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -116,3 +125,32 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+
+
+@app.post("/api/v1/inventory/shortage-risk")
+async def shortage_risk(request: ShortageRequest):
+    """
+    Calculate the shortage risk probability for a given inventory item.
+    """
+    try:
+        features = request.dict()
+        probability = predict_shortage(features)
+        # If model not loaded, inform user
+        if probability == 0.0 and model is None:
+            raise HTTPException(
+                status_code=503,
+                detail="ML model not loaded yet. Train the model first."
+            )
+        return {"shortage_risk_probability": round(probability, 4)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+@app.get("/predict/{drug_id}")
+def predict(drug_id: int):
+    return predict_shortage(drug_id)
+
+@app.post("/retrain-model")
+def retrain():
+    return train_model()
