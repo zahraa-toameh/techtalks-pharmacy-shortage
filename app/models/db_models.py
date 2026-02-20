@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import enum
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import (
     DateTime,
+    Enum,
     ForeignKey,
     Integer,
     String,
@@ -15,6 +18,43 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
     pass
+
+
+# =========================
+# User / Roles
+# =========================
+class UserRole(enum.Enum):
+    PHARMACIST = "PHARMACIST"
+    USER = "USER"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+
+    # nullable because authentication may not be implemented yet
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, name="user_role"),
+        nullable=False,
+        default=UserRole.USER,
+    )
+
+    # Optional link: pharmacist belongs to a pharmacy
+    pharmacy_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("pharmacies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    pharmacy: Mapped[Optional["Pharmacy"]] = relationship(
+        back_populates="users"
+    )
 
 
 # =========================
@@ -30,6 +70,10 @@ class Pharmacy(Base):
     inventory_items: Mapped[list["Inventory"]] = relationship(
         back_populates="pharmacy",
         cascade="all, delete-orphan",
+    )
+
+    users: Mapped[list["User"]] = relationship(
+        back_populates="pharmacy"
     )
 
 
@@ -82,13 +126,11 @@ class Inventory(Base):
     medication: Mapped["Medication"] = relationship(back_populates="inventory_items")
 
     __table_args__ = (
-        # Prevent duplicate inventory rows
         UniqueConstraint(
             "pharmacy_id",
             "medication_id",
             name="uq_inventory_pair",
         ),
-        # Optimize frequent lookup queries
         Index(
             "ix_inventory_pharmacy_med",
             "pharmacy_id",
