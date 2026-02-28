@@ -27,6 +27,7 @@ from sklearn.preprocessing import StandardScaler
 from sqlalchemy.orm import Session
 
 from app.database.connection import SessionLocal
+from app.ml.model_utils import save_model
 from app.models.db_models import Inventory, StockHistory
 
 
@@ -316,6 +317,8 @@ def main() -> None:
 
     finally:
         db.close()
+        version_path = save_model(pipe, version="v1")
+        print(f"Saved versioned model: {version_path}")
 
 
 if __name__ == "__main__":
