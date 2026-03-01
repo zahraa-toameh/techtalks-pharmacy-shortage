@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 24 24" fill="none">
+  <defs>
+    <linearGradient id="pillGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399" /> <stop offset="100%" style="stop-color:#0d9488" /> </linearGradient>
+  </defs>
+  <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" stroke="url(#pillGradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+  <path d="m8.5 8.5 7 7" stroke="url(#pillGradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
