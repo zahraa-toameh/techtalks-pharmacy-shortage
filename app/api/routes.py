@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends,Query
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -130,6 +130,48 @@ class ShortageRiskResponse(BaseModel):
                 "calculated_at": "2026-02-02T12:34:56"
             }
         }
+
+
+# ===== PAGINATION SCHEMA =====
+
+class PaginationMeta(BaseModel):
+    """Pagination metadata"""
+    page: int
+    limit: int
+    total_items: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
+
+
+class InventoryListResponse(BaseModel):
+    """Response for paginated inventory list"""
+    items: List[InventoryItem]
+    pagination: PaginationMeta
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "items": [
+                    {
+                        "id": 1,
+                        "pharmacy_id": 1,
+                        "medication_id": 101,
+                        "quantity": 50
+                    }
+                ],
+                "pagination": {
+                    "page": 1,
+                    "limit": 20,
+                    "total_items": 45,
+                    "total_pages": 3,
+                    "has_next": True,
+                    "has_previous": False
+                }
+            }
+        }
+
+
 
 
 # ===== HELPER FUNCTIONS =====
@@ -303,11 +345,13 @@ async def remove_inventory_stock(
 
 @router.get(
     "/inventory",
-    response_model=List[InventoryItem],
+    response_model=InventoryListResponse,
     summary="Get All Inventory",
     description="Retrieve all inventory records, optionally filtered by pharmacy or low stock"
 )
 async def get_all_inventory(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
     pharmacy_id: Optional[int] = None,
     medication_id: Optional[int] = None,
     low_stock_only: bool = False,
@@ -323,39 +367,57 @@ async def get_all_inventory(
     - **min_quantity**: Filter items with quantity >= this value (optional)
     """
     from app.models.db_models import Inventory
-    
+
     try:
         query = db.query(Inventory)
-        
-        # Apply filters
+
         if pharmacy_id:
             query = query.filter(Inventory.pharmacy_id == pharmacy_id)
-        
+
         if medication_id:
             query = query.filter(Inventory.medication_id == medication_id)
-        
+
         if min_quantity is not None:
             query = query.filter(Inventory.quantity >= min_quantity)
-        
-        results = query.all()
-        
-        # Apply low stock filter if needed
+
+        total_items = query.count()
+
+        offset = (page - 1) * limit
+        results = query.offset(offset).limit(limit).all()
+
         if low_stock_only:
-            # Use shortage service to identify low stock items
-            shortage_service = ShortageService(db, critical_threshold=5, low_threshold=15)
-            low_stock_items = []
-            for item in results:
-                risk = shortage_service.compute_risk(item)
-                if risk.risk_score >= 0.5:  # Warning level or higher
-                    low_stock_items.append(item)
-            results = low_stock_items
-        
-        return results
-    
+            shortage_service = ShortageService(db)
+            results = [
+                item for item in results
+                if shortage_service.compute_risk(item).risk_score >= 0.5
+            ]
+
+        total_pages = (total_items + limit - 1) // limit
+
+        return InventoryListResponse(
+            items=[
+                InventoryItem(
+                    id=item.id,
+                    pharmacy_id=item.pharmacy_id,
+                    medication_id=item.medication_id,
+                    quantity=item.quantity
+                )
+                for item in results
+            ],
+            pagination=PaginationMeta(
+                page=page,
+                limit=limit,
+                total_items=total_items,
+                total_pages=total_pages,
+                has_next=page < total_pages,
+                has_previous=page > 1
+            )
+        )
+
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve inventory: {str(e)}"
+            status_code=500,
+            detail=str(e)
         )
 
 

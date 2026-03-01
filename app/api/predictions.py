@@ -178,12 +178,9 @@ class PharmacyShortageDetailSchema(BaseModel):
     description="Get comprehensive shortage report across all pharmacies using ReportingService"
 )
 async def get_shortages(
-    min_risk_score: Optional[float] = Query(
-        None,
-        ge=0.0,
-        le=1.0,
-        description="Filter items by minimum risk score (0.0 to 1.0)"
-    ),
+    page: int = Query(1, ge=1, description="Page number (starts at 1)"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page (max 100)"),
+    min_risk_score: Optional[float] = Query(None, ge=0.0, le=1.0),
     db: Session = Depends(get_db)
 ):
     """
@@ -284,6 +281,29 @@ async def get_shortages(
                 if item["reason"] == "low_stock"
             )
         
+            # ===== ADD PAGINATION HERE =====
+        # Paginate by_pharmacy list
+        pharmacies = response["by_pharmacy"]
+        total_pharmacies = len(pharmacies)
+
+        # Calculate pagination
+        offset = (page - 1) * limit
+        paginated_pharmacies = pharmacies[offset:offset + limit]
+
+        # Calculate total pages
+        total_pages = (total_pharmacies + limit - 1) // limit  # Ceiling division
+
+        # Add pagination metadata
+        response["by_pharmacy"] = paginated_pharmacies
+        response["pagination"] = {
+            "page": page,
+            "limit": limit,
+            "total_items": total_pharmacies,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_previous": page > 1
+        }
+
         return response
     
     except Exception as e:

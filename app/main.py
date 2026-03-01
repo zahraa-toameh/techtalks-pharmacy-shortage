@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from app.api import health_check, routes
+from app.api import health_check, routes, predictions, reports
 from app.database.connection import engine
 from app.models.db_models import Base
 
@@ -67,14 +67,17 @@ app = FastAPI(
     
     * **Inventory Management**: Add, update, remove, and query inventory
     * **Shortage Risk Assessment**: Real-time risk calculation for stockouts
+    * **Shortage Predictions**: Comprehensive shortage reports across pharmacies
+    * **Reports & Analytics**: Summary reports and trend analysis with pagination
     * **Stock History**: Automatic tracking of all inventory changes
     * **Flexible Filtering**: Query by pharmacy, medication, risk level, etc.
     
     ## Endpoints
     
-    * `/api/v1/health` - Health check
-    * `/api/v1/inventory/*` - Inventory management
-    * `/api/v1/inventory/shortage-risks` - Risk assessment
+    * `/api/v1/health` - Health check and system status
+    * `/api/v1/inventory/*` - Inventory management operations
+    * `/api/v1/shortages/*` - Shortage predictions and reports
+    * `/api/v1/reports/*` - Summary reports and trend analysis
     """,
     version="1.0.0",
     docs_url="/docs",
@@ -92,6 +95,7 @@ app.add_middleware(
 )
 
 # Include routers
+# Include routers
 app.include_router(
     health_check.router,
     prefix="/api/v1",
@@ -101,6 +105,16 @@ app.include_router(
     routes.router,
     prefix="/api/v1",
     tags=["Inventory & Shortage Assessment"]
+)
+app.include_router(
+    predictions.router,
+    prefix="/api/v1",
+    tags=["Shortage Predictions"]
+)
+app.include_router(
+    reports.router,
+    prefix="/api/v1",
+    tags=["Reports & Analytics"]
 )
 
 
